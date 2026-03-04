@@ -1,0 +1,22 @@
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment Files
+.env
+
+# Jupyter Notebook Checkpoints
+.ipynb_checkpoints/
+
+# Trained ML Models (Important: Do not push models)
+models/*.pkl
+
+# Virtual Environment
+venv/
+env/
+
+# System Files
+.DS_Store
+Thumbs.db
