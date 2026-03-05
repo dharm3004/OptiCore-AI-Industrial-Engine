@@ -10,7 +10,7 @@ __pycache__/
 # Jupyter Notebook Checkpoints
 .ipynb_checkpoints/
 
-# Trained ML Models (Important: Do not push models)
+# Trained ML Models
 models/*.pkl
 
 # Virtual Environment
@@ -20,3 +20,9 @@ env/
 # System Files
 .DS_Store
 Thumbs.db
+
+# Ignore only raw datasets
+data/raw/
+
+# Large processed datasets
+data/processed/*.csv
