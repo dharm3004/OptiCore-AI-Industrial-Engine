@@ -3,61 +3,70 @@ import pandas as pd
 import numpy as np
 import joblib
 import matplotlib.pyplot as plt
+import seaborn as sns
 from datetime import datetime
 import requests
 import shap
+import plotly.express as px
+import plotly.graph_objects as go
+import time
 
-# ---------------------------
-# API SETTINGS
-# ---------------------------
-API_KEY = "85cd98261c221d95c40aa5f9b8ce4f6a"
-CITY = "Delhi"
-
-# ---------------------------
+# --------------------------------------------------
 # PAGE CONFIG
-# ---------------------------
-st.set_page_config(page_title="Energy Forecast", layout="wide")
+# --------------------------------------------------
+st.set_page_config(page_title="Energy Forecast Dashboard", layout="wide")
+
 st.title("⚡ Energy Demand Forecast Dashboard")
 
-# ---------------------------
+# --------------------------------------------------
+# REAL TIME DASHBOARD
+# --------------------------------------------------
+auto_refresh = st.sidebar.checkbox("🔄 Live Monitoring")
+
+if auto_refresh:
+    time.sleep(30)
+    st.rerun()
+
+
+# --------------------------------------------------
+# API SETTINGS
+# --------------------------------------------------
+API_KEY = "YOUR_API_KEY"
+CITY = "Delhi"
+
+# --------------------------------------------------
 # LOAD MODEL
-# ---------------------------
+# --------------------------------------------------
 model = joblib.load("models/xgboost_energy_model_v2.pkl")
+
 features = model.get_booster().feature_names
 
 explainer = shap.TreeExplainer(model)
 
-# ---------------------------
+# --------------------------------------------------
 # WEATHER API
-# ---------------------------
+# --------------------------------------------------
 def get_weather():
 
     try:
         url = f"https://api.openweathermap.org/data/2.5/weather?q={CITY}&appid={API_KEY}&units=metric"
-        response = requests.get(url)
-        data = response.json()
+        r = requests.get(url)
+        data = r.json()
 
         weather = {
-            "temp": data["main"]["temp"],
-            "temp_min": data["main"]["temp_min"],
-            "temp_max": data["main"]["temp_max"],
-            "pressure": data["main"]["pressure"],
-            "humidity": data["main"]["humidity"],
-            "wind_speed": data["wind"]["speed"],
-            "wind_deg": data["wind"]["deg"],
-            "clouds_all": data["clouds"]["all"]
+            "temp":data["main"]["temp"],
+            "humidity":data["main"]["humidity"],
+            "wind_speed":data["wind"]["speed"],
+            "clouds":data["clouds"]["all"]
         }
 
     except:
+
         weather = {
             "temp":20,
-            "temp_min":18,
-            "temp_max":22,
-            "pressure":1010,
             "humidity":50,
             "wind_speed":5,
-            "wind_deg":100,
-            "clouds_all":20
+            "clouds":20
         }
 
     return weather
@@ -65,30 +74,33 @@ def get_weather():
 
 weather = get_weather()
 
-st.subheader("🌦 Current Weather")
+# --------------------------------------------------
+# WEATHER KPI
+# --------------------------------------------------
+st.subheader("🌦 Live Weather")
 
-col1,col2,col3,col4 = st.columns(4)
+c1,c2,c3,c4 = st.columns(4)
 
-col1.metric("Temperature",f"{weather['temp']} °C")
-col2.metric("Humidity",f"{weather['humidity']} %")
-col3.metric("Wind Speed",f"{weather['wind_speed']} m/s")
-col4.metric("Clouds",f"{weather['clouds_all']} %")
+c1.metric("🌡 Temperature",f"{weather['temp']} °C")
+c2.metric("💧 Humidity",f"{weather['humidity']} %")
+c3.metric("🌬 Wind Speed",f"{weather['wind_speed']} m/s")
+c4.metric("☁ Cloud Cover",f"{weather['clouds']} %") 
 
-# ---------------------------
+# --------------------------------------------------
 # SIDEBAR INPUTS
-# ---------------------------
-st.sidebar.header("Inputs")
+# --------------------------------------------------
+st.sidebar.header("⚙ Prediction Inputs")
 
-load_lag_1 = st.sidebar.number_input("Previous Hour Load", value=25000)
-load_lag_24 = st.sidebar.number_input("Load 24 Hours Ago", value=26000)
-load_lag_168 = st.sidebar.number_input("Load 7 Days Ago", value=25500)
+load_lag_1 = st.sidebar.number_input("Previous Hour Load",25000)
+load_lag_24 = st.sidebar.number_input("Load 24 Hours Ago",26000)
+load_lag_168 = st.sidebar.number_input("Load 7 Days Ago",25500)
 
-solar_forecast = st.sidebar.number_input("Solar Forecast", value=500)
-wind_forecast = st.sidebar.number_input("Wind Forecast", value=600)
+solar_forecast = st.sidebar.number_input("Solar Forecast",500)
+wind_forecast = st.sidebar.number_input("Wind Forecast",600)
 
-# ---------------------------
+# --------------------------------------------------
 # FEATURE BUILDER
-# ---------------------------
+# --------------------------------------------------
 def build_features(hour):
 
     df = pd.DataFrame(np.zeros((1,len(features))),columns=features)
@@ -112,38 +124,50 @@ def build_features(hour):
     df["generation wind onshore"] = wind_forecast
 
     df["temp"] = weather["temp"]
-    df["temp_min"] = weather["temp_min"]
-    df["temp_max"] = weather["temp_max"]
-    df["pressure"] = weather["pressure"]
     df["humidity"] = weather["humidity"]
     df["wind_speed"] = weather["wind_speed"]
-    df["wind_deg"] = weather["wind_deg"]
-    df["clouds_all"] = weather["clouds_all"]
 
     return df
 
-
-# ---------------------------
+# --------------------------------------------------
 # LIVE PREDICTION
-# ---------------------------
+# --------------------------------------------------
 st.subheader("🔮 Live Prediction")
 
-hour_input = st.slider("Select Hour",0,23,12)
+hour = st.slider("Select Hour",0,23,12)
 
 if st.button("Predict Load"):
 
-    X = build_features(hour_input)
+    X = build_features(hour)
 
-    pred = model.predict(X)
+    pred = model.predict(X)[0]
 
-    st.success(f"Predicted Load: {pred[0]:,.2f} MW")
+    st.success(f"⚡ Predicted Load: {pred:,.2f} MW")
 
-    # SHAP LOCAL
+    # INTERACTIVE GAUGE
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=pred,
+        title={'text': "Energy Demand"},
+        gauge={
+            'axis': {'range': [None, 60000]},
+            'bar': {'color': "orange"},
+            'steps': [
+                {'range': [0,20000], 'color': "green"},
+                {'range': [20000,40000], 'color': "yellow"},
+                {'range': [40000,60000], 'color': "red"}
+            ]
+        }
+    ))
+
+    st.plotly_chart(fig, use_container_width=True)
+
+    # SHAP explanation
     shap_values = explainer.shap_values(X)
 
     st.subheader("🔍 Prediction Explanation")
 
-    fig, ax = plt.subplots()
+    fig = plt.figure()
 
     shap.plots.waterfall(
         shap.Explanation(
@@ -157,143 +181,197 @@ if st.button("Predict Load"):
 
     st.pyplot(fig)
 
-
-# ---------------------------
+# --------------------------------------------------
 # 24 HOUR FORECAST
-# ---------------------------
-st.subheader("📊 24 Hour Load Forecast")
+# --------------------------------------------------
+st.subheader("📊 24 Hour Forecast")
 
 hours = list(range(24))
-predictions = []
+preds = []
 
 for h in hours:
-
     X = build_features(h)
     p = model.predict(X)[0]
-    predictions.append(p)
+    preds.append(p)
 
 forecast_df = pd.DataFrame({
     "Hour":hours,
-    "Predicted_Load":predictions
+    "Load":preds
 })
 
-fig = plt.figure()
+fig = px.line(
+    forecast_df,
+    x="Hour",
+    y="Load",
+    markers=True,
+    title="Next 24 Hour Energy Forecast"
+)
 
-plt.plot(forecast_df["Hour"],forecast_df["Predicted_Load"],marker="o")
+st.plotly_chart(fig, use_container_width=True)
 
-plt.xlabel("Hour")
-plt.ylabel("Load (MW)")
-plt.title("Next 24 Hour Energy Forecast")
+st.dataframe(forecast_df,use_container_width=True)
+
+# --------------------------------------------------
+# ENERGY SYSTEM KPI
+# --------------------------------------------------
+
+st.subheader("📊 Energy System Overview")
+
+k1, k2, k3, k4 = st.columns(4)
+
+current_load = forecast_df["Load"].iloc[hour]
+peak_load = forecast_df["Load"].max()
+min_load = forecast_df["Load"].min()
+renewable = solar_forecast + wind_forecast
+
+k1.metric("⚡ Current Demand", f"{current_load:,.0f} MW")
+k2.metric("📈 Peak Load", f"{peak_load:,.0f} MW")
+k3.metric("📉 Minimum Load", f"{min_load:,.0f} MW")
+k4.metric("🌞 Renewable Forecast", f"{renewable} MW")
+
+# --------------------------------------------------
+# HOURLY HEATMAP
+# --------------------------------------------------
+st.subheader("🔥 Hourly Energy Demand Heatmap")
+
+heatmap_data = forecast_df.copy()
+heatmap_data["Day"] = "Today"
+
+pivot = heatmap_data.pivot(index="Day", columns="Hour", values="Load")
+
+fig = plt.figure(figsize=(18,3))
+
+sns.heatmap(
+    pivot,
+    cmap="coolwarm",
+    annot=True,
+    fmt=".0f",
+    linewidths=0.5,
+    annot_kws={"rotation":90}
+)
 
 st.pyplot(fig)
 
-st.dataframe(forecast_df)
+# --------------------------------------------------
+# WEEKLY HEATMAP
+# --------------------------------------------------
+st.subheader("🔥 Weekly Energy Demand Heatmap")
 
-# ---------------------------
+days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+
+heatmap_matrix = []
+
+for d in range(7):
+
+    daily_load = []
+
+    for h in range(24):
+
+        X = build_features(h)
+        p = model.predict(X)[0]
+        daily_load.append(p)
+
+    heatmap_matrix.append(daily_load)
+
+heatmap_df = pd.DataFrame(
+    heatmap_matrix,
+    index=days,
+    columns=list(range(24))
+)
+
+fig = plt.figure(figsize=(18,5))
+
+sns.heatmap(
+    heatmap_df,
+    cmap="coolwarm",
+    annot=True,
+    fmt=".0f",
+    linewidths=0.3,
+    annot_kws={"rotation":90}
+)
+
+st.pyplot(fig)
+
+# --------------------------------------------------
 # GLOBAL FEATURE IMPORTANCE
-# ---------------------------
+# --------------------------------------------------
 st.subheader("🌍 Global Feature Importance")
 
-sample_data = pd.DataFrame(
+sample = pd.DataFrame(
     np.random.rand(200,len(features)),
     columns=features
 )
 
-shap_values_global = explainer.shap_values(sample_data)
+shap_vals = explainer.shap_values(sample)
 
 fig = plt.figure()
 
-shap.summary_plot(shap_values_global,sample_data,show=False)
+shap.summary_plot(shap_vals,sample,show=False)
 
 st.pyplot(fig)
 
+# --------------------------------------------------
+# HISTORICAL DATA
+# --------------------------------------------------
+data = pd.read_csv("data/processed/merged_energy_weather.csv")
+data = data.sample(2000)
 
-
-
-# ---------------------------
-# LOAD HISTORICAL DATA
-# ---------------------------
-
-data = pd.read_csv(r"E:\OptiCore_AI\data\processed\merged_energy_weather.csv")
-
-# agar dataset bada ho to sample le lo
-data = data.sample(2000, random_state=42)
-
-# ---------------------------
+# --------------------------------------------------
 # ACTUAL VS PREDICTED
-# ---------------------------
-
-st.subheader("📉 Actual vs Predicted Load")
+# --------------------------------------------------
+st.subheader("📉 Actual vs Predicted")
 
 X_hist = data[features]
-
 y_actual = data["total load actual"]
 
 y_pred = model.predict(X_hist)
 
 fig = plt.figure()
 
-plt.plot(y_actual.values[:200], label="Actual")
-plt.plot(y_pred[:200], label="Predicted")
+plt.plot(y_actual.values[:200],label="Actual")
+plt.plot(y_pred[:200],label="Predicted")
 
 plt.legend()
 
-plt.title("Actual vs Predicted Load")
-
 st.pyplot(fig)
 
-# ---------------------------
+# --------------------------------------------------
 # ERROR DISTRIBUTION
-# ---------------------------
+# --------------------------------------------------
+st.subheader("📊 Error Distribution")
 
-st.subheader("📊 Prediction Error Distribution")
-
-errors = y_actual.values - y_pred
+errors = y_actual - y_pred
 
 fig = plt.figure()
 
-plt.hist(errors, bins=40)
-
-plt.xlabel("Error")
-
-plt.ylabel("Frequency")
-
-plt.title("Prediction Error Distribution")
+plt.hist(errors,bins=40)
 
 st.pyplot(fig)
 
-# ---------------------------
+# --------------------------------------------------
 # RESIDUAL PLOT
-# ---------------------------
-
-st.subheader("📈 Residual Plot")
+# --------------------------------------------------
+st.subheader("📈 Residual Analysis")
 
 fig = plt.figure()
 
-plt.scatter(y_pred, errors)
+plt.scatter(y_pred,errors)
 
-plt.xlabel("Predicted Load")
-
-plt.ylabel("Residual Error")
-
-plt.title("Residual Analysis")
+plt.xlabel("Predicted")
+plt.ylabel("Residual")
 
 st.pyplot(fig)
 
-# ---------------------------
-# LOAD VS TEMPERATURE
-# ---------------------------
-
+# --------------------------------------------------
+# LOAD VS TEMP
+# --------------------------------------------------
 st.subheader("🌡 Load vs Temperature")
 
 fig = plt.figure()
 
-plt.scatter(data["temp"], data["total load actual"])
+plt.scatter(data["temp"],data["total load actual"])
 
 plt.xlabel("Temperature")
-
 plt.ylabel("Load")
-
-plt.title("Load vs Temperature Relationship")
 
 st.pyplot(fig)
