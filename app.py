@@ -212,6 +212,8 @@ st.plotly_chart(fig, use_container_width=True)
 st.dataframe(forecast_df,use_container_width=True)
 
 
+
+
 # --------------------------------------------------
 # Peak Demand Insight
 # --------------------------------------------------
@@ -389,6 +391,34 @@ plt.hist(errors,bins=40)
 
 st.pyplot(fig)
 
+
+# --------------------------------------------------
+# FORECAST Confidence Range
+# --------------------------------------------------
+ 
+st.subheader("📉 Forecast Confidence Range")
+
+std = np.std(errors)
+
+upper = forecast_df["Load"] + std
+lower = forecast_df["Load"] - std
+
+fig = plt.figure()
+
+plt.plot(forecast_df["Hour"], forecast_df["Load"], label="Prediction")
+plt.fill_between(
+    forecast_df["Hour"],
+    lower,
+    upper,
+    alpha=0.3,
+    label="Confidence Range"
+)
+
+plt.legend()
+
+st.pyplot(fig)
+
+
 # --------------------------------------------------
 # RESIDUAL PLOT
 # --------------------------------------------------
@@ -416,3 +446,18 @@ plt.xlabel("Temperature")
 plt.ylabel("Load")
 
 st.pyplot(fig)
+
+
+
+# --------------------------------------------------
+# Correlation Heatmap (Analytics Insight)
+# --------------------------------------------------
+
+st.subheader("🌱 Renewable Energy Contribution")
+
+renewable_total = solar_forecast + wind_forecast
+total_energy = current_load
+
+renewable_percent = (renewable_total / total_energy) * 100
+st.metric("Renewable Share", f"{renewable_percent:.1f}%")
+
