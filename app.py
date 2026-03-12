@@ -213,11 +213,12 @@ st.dataframe(forecast_df,use_container_width=True)
 
 
 
-
 # --------------------------------------------------
 # Peak Demand Insight
 # --------------------------------------------------
+
 peak_hour = forecast_df.loc[forecast_df["Load"].idxmax()]
+peak_load = forecast_df["Load"].max()   # ← ye line add karo
 
 st.subheader("⚡ Peak Demand Insight")
 
@@ -226,6 +227,22 @@ st.info(
     f"with {peak_hour['Load']:,.0f} MW"
 )
 
+
+# --------------------------------------------------
+# Demand Alert System
+# --------------------------------------------------
+
+st.subheader("🚨 Demand Alert System")
+
+if peak_load > 38000:
+    st.error("⚠ High Demand Expected — Grid Load May Surge")
+
+elif peak_load > 32000:
+    st.warning("⚡ Moderate Demand Expected")
+
+else:
+    st.success("✅ Demand Within Normal Range")
+    
 # --------------------------------------------------
 # ENERGY SYSTEM KPI
 # --------------------------------------------------
@@ -257,6 +274,43 @@ total_energy = current_load
 renewable_percent = (renewable_total / total_energy) * 100
 
 st.metric("Renewable Share", f"{renewable_percent:.1f}%")
+
+
+# --------------------------------------------------
+#  Renewable vs Demand
+# --------------------------------------------------
+
+st.subheader("🌱 Renewable vs Demand")
+
+energy_df = pd.DataFrame({
+    "Source":["Solar","Wind","Total Demand"],
+    "Value":[solar_forecast, wind_forecast, current_load]
+})
+
+fig = px.bar(
+    energy_df,
+    x="Source",
+    y="Value",
+    title="Energy Mix vs Demand"
+)
+
+st.plotly_chart(fig,use_container_width=True)
+
+
+# --------------------------------------------------
+# 🤖 AI Energy Insights
+# --------------------------------------------------
+st.subheader("🤖 AI Energy Insights")
+
+insight = f"""
+Peak demand expected around {int(peak_hour['Hour'])}:00.
+
+Current renewable contribution is {renewable_percent:.1f}% of total demand.
+
+Higher temperature ({weather['temp']}°C) may increase electricity consumption.
+"""
+
+st.info(insight)
 
 # --------------------------------------------------
 # HOURLY HEATMAP
@@ -351,6 +405,7 @@ data = data.dropna(subset=["total load actual"])
 
 if len(data) > 2000:
     data = data.sample(2000)
+
 # --------------------------------------------------
 # ACTUAL VS PREDICTED
 # --------------------------------------------------
