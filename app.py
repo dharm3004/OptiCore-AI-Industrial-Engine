@@ -10,6 +10,7 @@ import shap
 import plotly.express as px
 import plotly.graph_objects as go
 import time
+from sklearn.metrics import mean_absolute_error, r2_score
 
 # --------------------------------------------------
 # PAGE CONFIG
@@ -206,10 +207,22 @@ fig = px.line(
     markers=True,
     title="Next 24 Hour Energy Forecast"
 )
-
 st.plotly_chart(fig, use_container_width=True)
 
 st.dataframe(forecast_df,use_container_width=True)
+
+
+# --------------------------------------------------
+# Peak Demand Insight
+# --------------------------------------------------
+peak_hour = forecast_df.loc[forecast_df["Load"].idxmax()]
+
+st.subheader("⚡ Peak Demand Insight")
+
+st.info(
+    f"Highest demand expected at Hour {int(peak_hour['Hour'])} "
+    f"with {peak_hour['Load']:,.0f} MW"
+)
 
 # --------------------------------------------------
 # ENERGY SYSTEM KPI
@@ -228,6 +241,20 @@ k1.metric("⚡ Current Demand", f"{current_load:,.0f} MW")
 k2.metric("📈 Peak Load", f"{peak_load:,.0f} MW")
 k3.metric("📉 Minimum Load", f"{min_load:,.0f} MW")
 k4.metric("🌞 Renewable Forecast", f"{renewable} MW")
+
+
+# --------------------------------------------------
+# 🌱 Renewable Energy Contribution
+# --------------------------------------------------
+
+st.subheader("🌱 Renewable Energy Contribution")
+
+renewable_total = solar_forecast + wind_forecast
+total_energy = current_load
+
+renewable_percent = (renewable_total / total_energy) * 100
+
+st.metric("Renewable Share", f"{renewable_percent:.1f}%")
 
 # --------------------------------------------------
 # HOURLY HEATMAP
@@ -334,6 +361,20 @@ plt.plot(y_pred[:200],label="Predicted")
 plt.legend()
 
 st.pyplot(fig)
+
+
+# --------------------------------------------------
+# 📊 Model Performance KPI
+# --------------------------------------------------
+mae = mean_absolute_error(y_actual, y_pred)
+r2 = r2_score(y_actual, y_pred)
+
+st.subheader("📊 Model Performance")
+
+m1, m2 = st.columns(2)
+
+m1.metric("MAE", f"{mae:,.2f}")
+m2.metric("R² Score", f"{r2:.3f}")
 
 # --------------------------------------------------
 # ERROR DISTRIBUTION
