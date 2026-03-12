@@ -342,15 +342,21 @@ st.pyplot(fig)
 # --------------------------------------------------
 # HISTORICAL DATA
 # --------------------------------------------------
-data = pd.read_csv("data/processed/merged_energy_weather.csv")
-data = data.sample(2000)
 
+data = pd.read_csv("data/processed/merged_energy_weather.csv")
+
+data = data.drop_duplicates()
+
+data = data.dropna(subset=["total load actual"])
+
+if len(data) > 2000:
+    data = data.sample(2000)
 # --------------------------------------------------
 # ACTUAL VS PREDICTED
 # --------------------------------------------------
 st.subheader("📉 Actual vs Predicted")
 
-X_hist = data[features]
+X_hist = data[features].fillna(0)
 y_actual = data["total load actual"]
 
 y_pred = model.predict(X_hist)
@@ -368,8 +374,14 @@ st.pyplot(fig)
 # --------------------------------------------------
 # 📊 Model Performance KPI
 # --------------------------------------------------
-mae = mean_absolute_error(y_actual, y_pred)
-r2 = r2_score(y_actual, y_pred)
+# remove NaN before metrics
+eval_df = pd.DataFrame({
+    "actual": y_actual,
+    "pred": y_pred
+}).dropna()
+
+mae = mean_absolute_error(eval_df["actual"], eval_df["pred"])
+r2 = r2_score(eval_df["actual"], eval_df["pred"])
 
 st.subheader("📊 Model Performance")
 
@@ -377,7 +389,6 @@ m1, m2 = st.columns(2)
 
 m1.metric("MAE", f"{mae:,.2f}")
 m2.metric("R² Score", f"{r2:.3f}")
-
 # --------------------------------------------------
 # ERROR DISTRIBUTION
 # --------------------------------------------------
@@ -449,15 +460,22 @@ st.pyplot(fig)
 
 
 
+
 # --------------------------------------------------
 # Correlation Heatmap (Analytics Insight)
 # --------------------------------------------------
 
-st.subheader("🌱 Renewable Energy Contribution")
+st.subheader("📊 Correlation Heatmap")
 
-renewable_total = solar_forecast + wind_forecast
-total_energy = current_load
+corr = data.corr(numeric_only=True)
 
-renewable_percent = (renewable_total / total_energy) * 100
-st.metric("Renewable Share", f"{renewable_percent:.1f}%")
+fig = plt.figure(figsize=(12,8))
+
+sns.heatmap(
+    corr,
+    cmap="coolwarm",
+    annot=False
+)
+
+st.pyplot(fig)
 
