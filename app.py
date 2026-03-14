@@ -11,22 +11,68 @@ import plotly.express as px
 import plotly.graph_objects as go
 import time
 from sklearn.metrics import mean_absolute_error, r2_score
+from auth.login import login
+
+
 
 # --------------------------------------------------
 # PAGE CONFIG
 # --------------------------------------------------
 st.set_page_config(page_title="Energy Forecast Dashboard", layout="wide")
 
+# --------------------------------------------------
+# AUTHENTICATION
+# --------------------------------------------------
+user = login()
+if user is None:
+    st.warning("Please log in to access the dashboard.")
+    st.stop()
+username, role = user
+
+# ----------------------------
+# ROLE BASED SIDEBAR
+# ----------------------------
+
+if role == "admin":
+    st.sidebar.success("👑 Admin Access")
+
+elif role == "analyst":
+    st.sidebar.info("📊 Analyst Access")
+
+else:
+    st.sidebar.warning("👀 Viewer Access")
+
+
+# ----------------------------
+# SIDEBAR NAVIGATION
+# ----------------------------
+
+menu = st.sidebar.selectbox(
+    "Navigation",
+    ["Dashboard", "Register", "Admin Panel"]
+)
+
 st.title("⚡ Energy Demand Forecast Dashboard")
+
+# ----------------------------
+# DASHBOARD PAGE
+# ----------------------------
+
+if menu == "Dashboard":
+
+    st.title("⚡ Energy Demand Forecast Dashboard")
+
+    auto_refresh = st.sidebar.checkbox("🔄 Live Monitoring")
+
 
 # --------------------------------------------------
 # REAL TIME DASHBOARD
 # --------------------------------------------------
-auto_refresh = st.sidebar.checkbox("🔄 Live Monitoring")
 
-if auto_refresh:
-    time.sleep(30)
-    st.rerun()
+    if auto_refresh:
+        time.sleep(30)
+        st.rerun()
+
 
 
 # --------------------------------------------------
@@ -38,7 +84,12 @@ CITY = "Delhi"
 # --------------------------------------------------
 # LOAD MODEL
 # --------------------------------------------------
-model = joblib.load("models/xgboost_energy_model_v2.pkl")
+# model = joblib.load("models/xgboost_energy_model_v2.pkl")
+@st.cache_resource
+def load_model():
+    return joblib.load("models/xgboost_energy_model_v2.pkl")
+
+model = load_model()
 
 features = model.get_booster().feature_names
 
