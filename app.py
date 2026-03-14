@@ -419,7 +419,8 @@ y_pred = model.predict(X_hist)
 fig = plt.figure()
 
 plt.plot(y_actual.values[:200],label="Actual")
-plt.plot(y_pred[:200],label="Predicted")
+plt.plot(y_pred[:200],label="Predicted",alpha=0.9)
+
 
 plt.legend()
 
