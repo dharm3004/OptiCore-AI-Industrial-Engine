@@ -1,7 +1,7 @@
 import streamlit_authenticator as stauth
 
-passwords = "admin123"
+password = "admin123"
 
-hashed_passwords = stauth.Hasher().hash(passwords)
+hashed_password = stauth.Hasher().hash(password)
 
-print(hashed_passwords)
+print(hashed_password)

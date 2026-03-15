@@ -6,8 +6,7 @@ import streamlit_authenticator as stauth
 
 def login():
 
-    # config load
-    with open("config.yaml") as file:
+    with open("auth/config.yaml") as file:
         config = yaml.load(file, Loader=SafeLoader)
 
     authenticator = stauth.Authenticate(
@@ -17,17 +16,24 @@ def login():
         config["cookie"]["expiry_days"]
     )
 
-    name, authentication_status, username = authenticator.login("Login", "main")
+    # login widget
+    authenticator.login(location="main")
 
-    if authentication_status == False:
+    authentication_status = st.session_state["authentication_status"]
+    username = st.session_state["username"]
+    name = st.session_state["name"]
+
+    if authentication_status is False:
         st.error("❌ Username or password incorrect")
+        return None
 
-    if authentication_status == None:
+    if authentication_status is None:
         st.warning("⚠ Please enter your username and password")
+        return None
 
     if authentication_status:
 
-        authenticator.logout("Logout", "sidebar")
+        authenticator.logout("Logout", location="sidebar")
 
         st.sidebar.success(f"Welcome {name}")
 

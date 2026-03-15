@@ -1,0 +1,16 @@
+cookie:
+  expiry_days: 30
+  key: energy_dashboard_key
+  name: energy_dashboard_cookie
+credentials:
+  usernames:
+    DHARM:
+      email: dharmrathod194@gmail.com
+      name: RATHOD DHARMESH A.
+      password: $2b$12$2GMIl7JCo9PQIRc6ajmeJOR.H1gmlLBNuwAtCUxfuthY0maSMYOq2
+      role: analyst
+    admin:
+      email: admin@gmail.com
+      name: Admin
+      password: $2b$12$RWj7YIFgFRrRqPE4Ihcz3eTpw.t6Lw3LBGj1re9zVdmIzvfKAMc0q
+      role: admin
