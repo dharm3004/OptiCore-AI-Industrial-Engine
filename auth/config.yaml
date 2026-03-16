@@ -14,3 +14,8 @@ credentials:
       name: Admin
       password: $2b$12$RWj7YIFgFRrRqPE4Ihcz3eTpw.t6Lw3LBGj1re9zVdmIzvfKAMc0q
       role: admin
+    parth:
+      email: parth@gmail.com
+      name: parth chamandass
+      password: $2b$12$lkf2hNUGnz1ZLcmcNXeg0utcGxZq/CLQ7uEh8IG.ZAJRk/cCpSJ3O
+      role: viewer
