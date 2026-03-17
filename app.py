@@ -15,7 +15,61 @@ from auth.login import login
 from auth.register import register
 from auth.logger import log_activity
 from admin.admin_panel import admin_panel
+# ---------------- EXPORT SYSTEM ----------------
+from io import BytesIO
+from reportlab.platypus import SimpleDocTemplate, Image, Table
+from reportlab.lib.pagesizes import landscape
+from math import ceil
+import plotly.io as pio
 
+export_figs = []
+
+# Store matplotlib charts
+def show_and_store_matplotlib(fig):
+    export_figs.append(fig)
+    st.pyplot(fig)
+
+# Store plotly charts
+def show_and_store_plotly(fig):
+    export_figs.append(fig)
+    st.plotly_chart(fig, use_container_width=True)
+
+# Convert figure to image
+def fig_to_rl_image(fig, width=300, height=220):
+    buf = BytesIO()
+
+    if hasattr(fig, "savefig"):  # matplotlib
+        fig.savefig(buf, format="png", bbox_inches="tight")
+    else:  # plotly
+        buf.write(pio.to_image(fig, format="png"))
+
+    buf.seek(0)
+    return Image(buf, width=width, height=height)
+
+# Generate PDF (Power BI style)
+def generate_full_dashboard_pdf(figs):
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=landscape((1400, 800)))
+
+    images = [fig_to_rl_image(f) for f in figs]
+
+    cols = 3
+    rows = ceil(len(images) / cols)
+
+    grid = []
+    for i in range(rows):
+        row = images[i*cols:(i+1)*cols]
+        while len(row) < cols:
+            row.append("")
+        grid.append(row)
+
+    table = Table(grid)
+
+    doc.build([table])
+    buffer.seek(0)
+
+    return buffer
 
 # --------------------------------------------------
 # PAGE CONFIG
@@ -213,7 +267,7 @@ if menu == "Dashboard":
                 ]
             }
         ))
-        st.plotly_chart(fig, use_container_width=True)
+        show_and_store_plotly(fig)
 
         # SHAP explanation
         shap_values = explainer.shap_values(X)
@@ -228,7 +282,7 @@ if menu == "Dashboard":
             ),
             show=False
         )
-        st.pyplot(fig)
+        show_and_store_matplotlib(fig)
 
     # --------------------------------------------------
     # 24 HOUR FORECAST
@@ -245,7 +299,7 @@ if menu == "Dashboard":
     forecast_df = pd.DataFrame({"Hour": hours, "Load": preds})
 
     fig = px.line(forecast_df, x="Hour", y="Load", markers=True, title="Next 24 Hour Energy Forecast")
-    st.plotly_chart(fig, use_container_width=True)
+    show_and_store_plotly(fig)
     st.dataframe(forecast_df, use_container_width=True)
 
     # --------------------------------------------------
@@ -308,7 +362,7 @@ if menu == "Dashboard":
         "Value": [solar_forecast, wind_forecast, current_load]
     })
     fig = px.bar(energy_df, x="Source", y="Value", title="Energy Mix vs Demand")
-    st.plotly_chart(fig, use_container_width=True)
+    show_and_store_plotly(fig)
 
     # --------------------------------------------------
     # AI Energy Insights
@@ -335,7 +389,7 @@ if menu == "Dashboard":
 
     fig = plt.figure(figsize=(18, 3))
     sns.heatmap(pivot, cmap="coolwarm", annot=True, fmt=".0f", linewidths=0.5, annot_kws={"rotation": 90})
-    st.pyplot(fig)
+    show_and_store_matplotlib(fig)
 
     # --------------------------------------------------
     # WEEKLY HEATMAP
@@ -357,7 +411,7 @@ if menu == "Dashboard":
 
     fig = plt.figure(figsize=(18, 5))
     sns.heatmap(heatmap_df, cmap="coolwarm", annot=True, fmt=".0f", linewidths=0.3, annot_kws={"rotation": 90})
-    st.pyplot(fig)
+    show_and_store_matplotlib(fig)
 
     # --------------------------------------------------
     # GLOBAL FEATURE IMPORTANCE
@@ -369,7 +423,7 @@ if menu == "Dashboard":
 
     fig = plt.figure()
     shap.summary_plot(shap_vals, sample, show=False)
-    st.pyplot(fig)
+    show_and_store_matplotlib(fig)
 
     # --------------------------------------------------
     # HISTORICAL DATA
@@ -398,7 +452,7 @@ if menu == "Dashboard":
     plt.plot(y_actual.values[:200], label="Actual")
     plt.plot(y_pred[:200], label="Predicted", alpha=0.9)
     plt.legend()
-    st.pyplot(fig)
+    show_and_store_matplotlib(fig)
 
     # --------------------------------------------------
     # Model Performance KPI
@@ -420,7 +474,7 @@ if menu == "Dashboard":
     errors = y_actual - y_pred
     fig = plt.figure()
     plt.hist(errors, bins=40)
-    st.pyplot(fig)
+    show_and_store_matplotlib(fig)
 
     # --------------------------------------------------
     # FORECAST Confidence Range
@@ -435,7 +489,7 @@ if menu == "Dashboard":
     plt.plot(forecast_df["Hour"], forecast_df["Load"], label="Prediction")
     plt.fill_between(forecast_df["Hour"], lower, upper, alpha=0.3, label="Confidence Range")
     plt.legend()
-    st.pyplot(fig)
+    show_and_store_matplotlib(fig)
 
     # --------------------------------------------------
     # RESIDUAL PLOT
@@ -446,7 +500,7 @@ if menu == "Dashboard":
     plt.scatter(y_pred, errors)
     plt.xlabel("Predicted")
     plt.ylabel("Residual")
-    st.pyplot(fig)
+    show_and_store_matplotlib(fig)
 
     # --------------------------------------------------
     # LOAD VS TEMP
@@ -457,7 +511,7 @@ if menu == "Dashboard":
     plt.scatter(data["temp"], data["total load actual"])
     plt.xlabel("Temperature")
     plt.ylabel("Load")
-    st.pyplot(fig)
+    show_and_store_matplotlib(fig)
 
     # --------------------------------------------------
     # Correlation Heatmap
@@ -467,7 +521,8 @@ if menu == "Dashboard":
     corr = data.corr(numeric_only=True)
     fig = plt.figure(figsize=(12, 8))
     sns.heatmap(corr, cmap="coolwarm", annot=False)
-    st.pyplot(fig)
+    show_and_store_matplotlib(fig)
+
 
 
 elif menu == "Register":
@@ -481,3 +536,24 @@ elif menu == "Admin Panel":
         admin_panel()
     else:
         st.error("Access denied")
+
+
+
+# --------------------------------------------------
+# EXPORT FULL DASHBOARD
+# --------------------------------------------------
+st.subheader("📥 Export Full Dashboard")
+
+if st.button("📊 Download Power BI Style Report"):
+
+    if len(export_figs) == 0:
+        st.warning("No charts to export")
+    else:
+        pdf = generate_full_dashboard_pdf(export_figs)
+
+        st.download_button(
+            "⬇ Download Report",
+            pdf,
+            "full_dashboard.pdf",
+            "application/pdf"
+        )
