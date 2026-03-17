@@ -15,6 +15,10 @@ from auth.login import login
 from auth.register import register
 from auth.logger import log_activity
 from admin.admin_panel import admin_panel
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 # ---------------- EXPORT SYSTEM ----------------
 from io import BytesIO
 from reportlab.lib.pagesizes import landscape
@@ -173,8 +177,8 @@ if menu == "Dashboard":
     # --------------------------------------------------
     # API SETTINGS
     # --------------------------------------------------
-    API_KEY = "47b19f01fbc7ed0b9270bb0b1f7e70dd"
-    CITY = "Delhi"
+    API_KEY = os.getenv("OPENWEATHER_API_KEY")
+    CITY = os.getenv("CITY")
 
     # --------------------------------------------------
     # LOAD MODEL
