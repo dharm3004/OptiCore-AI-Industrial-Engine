@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from database import logs_collection
 
 
 def admin_panel():
@@ -9,7 +10,12 @@ def admin_panel():
     st.subheader("📜 Activity Logs")
 
     try:
-        logs = pd.read_csv("logs/activity_log.csv")
+
+        logs_data = list(logs_collection.find())
+        logs = pd.DataFrame(logs_data)
+
+        if "_id" in logs.columns:
+            logs = logs.drop("_id", axis=1)
 
         # ------------------------------
         # SEARCH FILTER
@@ -81,9 +87,6 @@ def admin_panel():
             "text/csv"
         )
 
-        # ------------------------------
-        # REFRESH BUTTON
-        # ------------------------------
         if st.button("🔄 Refresh Logs"):
             st.rerun()
 

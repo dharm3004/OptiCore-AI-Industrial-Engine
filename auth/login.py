@@ -1,42 +1,35 @@
 import streamlit as st
-import yaml
-from yaml.loader import SafeLoader
-import streamlit_authenticator as stauth
+import bcrypt
+from database import users_collection
 
 
 def login():
 
-    with open("auth/config.yaml") as file:
-        config = yaml.load(file, Loader=SafeLoader)
+    st.subheader("🔐 Login")
 
-    authenticator = stauth.Authenticate(
-        config["credentials"],
-        config["cookie"]["name"],
-        config["cookie"]["key"],
-        config["cookie"]["expiry_days"]
-    )
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
 
-    # login widget
-    authenticator.login(location="main")
+    if st.button("Login"):
 
-    authentication_status = st.session_state["authentication_status"]
-    username = st.session_state["username"]
-    name = st.session_state["name"]
+        user = users_collection.find_one({"username": username})
 
-    if authentication_status is False:
-        st.error("❌ Username or password incorrect")
-        return None
+        if user:
 
-    if authentication_status is None:
-        st.warning("⚠ Please enter your username and password")
-        return None
+            stored_password = user["password"]
 
-    if authentication_status:
+            if bcrypt.checkpw(password.encode(), stored_password.encode()):
 
-        authenticator.logout("Logout", location="sidebar")
+                role = user["role"]
 
-        st.sidebar.success(f"Welcome {name}")
+                st.sidebar.success(f"Welcome {username}")
 
-        role = config["credentials"]["usernames"][username]["role"]
+                return username, role
 
-        return username, role
+            else:
+                st.error("❌ Invalid password")
+                return None
+
+        else:
+            st.error("❌ User not found")
+            return None
