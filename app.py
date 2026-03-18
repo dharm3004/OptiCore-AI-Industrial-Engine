@@ -313,6 +313,18 @@ if menu == "Dashboard":
         )
         show_and_store_matplotlib(fig)
 
+        # Top feature impact (reason)
+        st.subheader("🔍 Key Drivers Behind Prediction")
+
+        top_features = sorted(
+            zip(X.columns, shap_values[0]),
+            key=lambda x: abs(x[1]),
+            reverse=True
+        )[:3]
+
+        for f, v in top_features:
+            st.write(f"➡ {f}: impact {v:.2f}")
+
     # --------------------------------------------------
     # 24 HOUR FORECAST
     # --------------------------------------------------
@@ -353,7 +365,36 @@ if menu == "Dashboard":
     elif peak_load > 32000:
         st.warning("⚡ Moderate Demand Expected")
     else:
-        st.success("✅ Demand Within Normal Range")
+        st.success("✅ Demand Within Normal Range") 
+
+    # --------------------------------------------------
+    # 🤖 AI Decision Engine (Advanced)
+    # --------------------------------------------------
+    st.subheader("🧠 AI Decision Engine")
+
+    # Dynamic thresholds
+    avg_load = forecast_df["Load"].mean()
+    std_load = forecast_df["Load"].std()
+
+    high_threshold = avg_load + std_load
+    moderate_threshold = avg_load + (0.5 * std_load)
+
+    # Current prediction (selected hour)
+    current_pred = forecast_df["Load"].iloc[hour]
+
+    # Decision logic
+    if current_pred > high_threshold:
+        st.error("⚠ HIGH RISK: Grid overload possible")
+        action = "Increase renewable generation / apply load balancing"
+    elif current_pred > moderate_threshold:
+        st.warning("⚡ MODERATE RISK: Monitor grid closely")
+        action = "Optimize energy distribution"
+    else:
+        st.success("✅ LOW RISK: System stable")
+        action = "No action required"
+
+    # Show recommendation
+    st.info(f"💡 Recommended Action: {action}")
 
     # --------------------------------------------------
     # ENERGY SYSTEM KPI
