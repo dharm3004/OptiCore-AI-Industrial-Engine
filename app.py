@@ -234,11 +234,57 @@ if menu == "Dashboard":
     # --------------------------------------------------
     st.sidebar.header("⚙ Prediction Inputs")
 
-    load_lag_1 = st.sidebar.number_input("Previous Hour Load", 25000)
-    load_lag_24 = st.sidebar.number_input("Load 24 Hours Ago", 26000)
-    load_lag_168 = st.sidebar.number_input("Load 7 Days Ago", 25500)
-    solar_forecast = st.sidebar.number_input("Solar Forecast", 500)
-    wind_forecast = st.sidebar.number_input("Wind Forecast", 600)
+    load_lag_1 = st.sidebar.number_input(
+    "Previous Hour Load (MW)",
+    min_value=10000,
+    max_value=60000,
+    value=25000,
+    step=100
+    )
+
+    load_lag_24 = st.sidebar.number_input(
+        "Load 24 Hours Ago (MW)",
+        min_value=10000,
+        max_value=60000,
+        value=26000,
+        step=100
+    )
+
+    load_lag_168 = st.sidebar.number_input(
+        "Load 7 Days Ago (MW)",
+        min_value=10000,
+        max_value=60000,
+        value=25500,
+        step=100
+    )
+
+    solar_forecast = st.sidebar.number_input(
+        "Solar Forecast (MW)",
+        min_value=0,
+        max_value=20000,
+        value=500,
+        step=50
+    )
+
+    wind_forecast = st.sidebar.number_input(
+        "Wind Forecast (MW)",
+        min_value=0,
+        max_value=20000,
+        value=600,
+        step=50
+    )
+
+    # --------------------------------------------------
+    # INPUT SANITY CHECK
+    # --------------------------------------------------
+    if load_lag_1 > 55000 or load_lag_24 > 55000 or load_lag_168 > 55000:
+        st.sidebar.warning("⚠ Very high load input detected. Please verify values.")
+
+    if load_lag_1 < 12000 or load_lag_24 < 12000 or load_lag_168 < 12000:
+        st.sidebar.info("ℹ Low load values detected. Ensure inputs are realistic.")
+
+    if solar_forecast + wind_forecast > 25000:
+        st.sidebar.warning("⚠ Renewable forecast unusually high.")
 
     # --------------------------------------------------
     # FEATURE BUILDER
