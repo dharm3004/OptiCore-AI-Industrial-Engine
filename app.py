@@ -4,7 +4,7 @@ import numpy as np
 import joblib
 import matplotlib.pyplot as plt
 import seaborn as sns
-from datetime import datetime
+from datetime import datetime,timedelta
 import requests
 import shap
 import plotly.express as px
@@ -289,24 +289,30 @@ if menu == "Dashboard":
     # --------------------------------------------------
     # FEATURE BUILDER
     # --------------------------------------------------
-    def build_features(hour):
+    def build_features(hour, day_offset=0):
         df = pd.DataFrame(np.zeros((1, len(features))), columns=features)
-        now = datetime.now()
+        now = datetime.now() + timedelta(days=day_offset)
+
         df["hour_x"] = hour
         df["day_x"] = now.day
         df["month_x"] = now.month
         df["weekday_x"] = now.weekday()
         df["is_weekend_x"] = int(now.weekday() >= 5)
+
         df["load_lag_1"] = load_lag_1
         df["load_lag_24"] = load_lag_24
         df["load_lag_168"] = load_lag_168
+
         df["forecast solar day ahead"] = solar_forecast
         df["forecast wind onshore day ahead"] = wind_forecast
+
         df["generation solar"] = solar_forecast
         df["generation wind onshore"] = wind_forecast
+
         df["temp"] = weather["temp"]
         df["humidity"] = weather["humidity"]
         df["wind_speed"] = weather["wind_speed"]
+
         return df
 
     # --------------------------------------------------
@@ -325,7 +331,19 @@ if menu == "Dashboard":
 
         X = build_features(hour)
         pred = model.predict(X)[0]
+
+        # ------------------------------
+        # Prediction Post-Processing
+        # ------------------------------
+        historical_avg = (load_lag_1 + load_lag_24 + load_lag_168) / 3
+        pred = (0.8 * pred) + (0.2 * historical_avg)
+
+        # Realistic bounds
+        pred = max(pred, 10000)
+        pred = min(pred, 60000)
+
         st.success(f"⚡ Predicted Load: {pred:,.2f} MW")
+
 
         # INTERACTIVE GAUGE
         fig = go.Figure(go.Indicator(
@@ -518,8 +536,15 @@ if menu == "Dashboard":
     for d in range(7):
         daily_load = []
         for h in range(24):
-            X = build_features(h)
+            X = build_features(h, day_offset=d)
             p = model.predict(X)[0]
+
+            # optional realistic smoothing
+            historical_avg = (load_lag_1 + load_lag_24 + load_lag_168) / 3
+            p = (0.8 * p) + (0.2 * historical_avg)
+            p = max(p, 10000)
+            p = min(p, 60000)
+
             daily_load.append(p)
         heatmap_matrix.append(daily_load)
 
@@ -529,17 +554,6 @@ if menu == "Dashboard":
     sns.heatmap(heatmap_df, cmap="coolwarm", annot=True, fmt=".0f", linewidths=0.3, annot_kws={"rotation": 90})
     show_and_store_matplotlib(fig)
 
-    # --------------------------------------------------
-    # GLOBAL FEATURE IMPORTANCE
-    # --------------------------------------------------
-    st.subheader("🌍 Global Feature Importance")
-
-    sample = pd.DataFrame(np.random.rand(200, len(features)), columns=features)
-    shap_vals = explainer.shap_values(sample)
-
-    fig = plt.figure()
-    shap.summary_plot(shap_vals, sample, show=False)
-    show_and_store_matplotlib(fig)
 
     # --------------------------------------------------
     # HISTORICAL DATA
@@ -569,6 +583,20 @@ if menu == "Dashboard":
     plt.plot(y_pred[:200], label="Predicted", alpha=0.9)
     plt.legend()
     show_and_store_matplotlib(fig)
+
+
+    # --------------------------------------------------
+    # GLOBAL FEATURE IMPORTANCE
+    # --------------------------------------------------
+    st.subheader("🌍 Global Feature Importance")
+
+    sample = X_hist.sample(min(200, len(X_hist)), random_state=42)
+    shap_vals = explainer.shap_values(sample)
+
+    fig = plt.figure()
+    shap.summary_plot(shap_vals, sample, show=False)
+    show_and_store_matplotlib(fig)
+
 
     # --------------------------------------------------
     # Model Performance KPI
