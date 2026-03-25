@@ -199,25 +199,29 @@ if menu == "Dashboard":
     def get_weather():
         try:
             url = f"https://api.openweathermap.org/data/2.5/weather?q={CITY}&appid={API_KEY}&units=metric"
-            r = requests.get(url)
+            r = requests.get(url, timeout=10)
+            r.raise_for_status()
             data = r.json()
+
             weather = {
                 "temp": data["main"]["temp"],
                 "humidity": data["main"]["humidity"],
                 "wind_speed": data["wind"]["speed"],
                 "clouds": data["clouds"]["all"]
             }
-        except:
+
+        except Exception as e:
+            st.warning("⚠ Live weather unavailable. Using fallback weather values.")
             weather = {
                 "temp": 20,
                 "humidity": 50,
                 "wind_speed": 5,
                 "clouds": 20
             }
+
         return weather
-
     weather = get_weather()
-
+    
     # --------------------------------------------------
     # WEATHER KPI
     # --------------------------------------------------
