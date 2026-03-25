@@ -12,16 +12,22 @@ def login():
         user = users_collection.find_one({"username": username})
 
         if user:
-            stored_password = user["password"]
-            if bcrypt.checkpw(password.encode(), stored_password.encode()):
-                role = user.get("role", "viewer")
-                st.sidebar.success(f"Welcome {username} 👋")
-                return username, role
-            else:
-                st.error("❌ Invalid password")
+            stored_password = user.get("password", "")
+            role = user.get("role", "viewer")
+
+            try:
+                if bcrypt.checkpw(password.encode("utf-8"), stored_password.encode("utf-8")):
+                    st.sidebar.success(f"Welcome {username} 👋")
+                    return username, role
+                else:
+                    st.error("❌ Invalid username or password")
+                    return None, None
+            except Exception:
+                st.error("⚠ Password format error in database. Re-register this user.")
                 return None, None
+
         else:
-            st.error("❌ User not found")
+            st.error("❌ Invalid username or password")
             return None, None
 
-    return None, None  # jab button press na ho
+    return None, None

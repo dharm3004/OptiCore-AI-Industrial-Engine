@@ -29,16 +29,16 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 
 
-export_figs = []
+if "export_figs" not in st.session_state:
+    st.session_state.export_figs = []
 
 # Store matplotlib charts
 def show_and_store_matplotlib(fig):
-    export_figs.append(fig)
+    st.session_state.export_figs.append(fig)
     st.pyplot(fig)
 
-# Store plotly charts
 def show_and_store_plotly(fig):
-    export_figs.append(fig)
+    st.session_state.export_figs.append(fig)
     st.plotly_chart(fig, use_container_width=True)
 
 # Convert figure to image
@@ -162,6 +162,7 @@ menu = st.sidebar.selectbox(
 # DASHBOARD PAGE
 # ----------------------------
 if menu == "Dashboard":
+    st.session_state.export_figs = []
 
     st.title("⚡ Energy Demand Forecast Dashboard")
 
@@ -221,7 +222,7 @@ if menu == "Dashboard":
 
         return weather
     weather = get_weather()
-    
+
     # --------------------------------------------------
     # WEATHER KPI
     # --------------------------------------------------
@@ -347,6 +348,18 @@ if menu == "Dashboard":
         pred = min(pred, 60000)
 
         st.success(f"⚡ Predicted Load: {pred:,.2f} MW")
+
+        st.subheader("📝 Prediction Summary")
+
+        st.write(f"""
+        The model predicts an energy demand of **{pred:,.2f} MW** for hour **{hour}:00**.
+
+        This prediction is primarily influenced by:
+        - Previous load patterns
+        - Renewable generation forecasts
+        - Current weather conditions
+        - Time-based demand behavior
+        """)
 
 
         # INTERACTIVE GAUGE
@@ -614,6 +627,26 @@ if menu == "Dashboard":
     m1.metric("MAE", f"{mae:,.2f}")
     m2.metric("R² Score", f"{r2:.3f}")
 
+
+    # --------------------------------------------------
+    # MODEL SELECTION SUMMARY
+    # --------------------------------------------------
+    st.subheader("🏆 Model Selection Summary")
+
+    model_compare_df = pd.DataFrame({
+        "Model": ["Linear Regression", "Decision Tree", "Random Forest", "Gradient Boosting", "XGBoost"],
+        "Status": ["Tested", "Tested", "Tested", "Tested", "Selected"],
+        "Reason": [
+            "Lower accuracy",
+            "Overfitting observed",
+            "Good performance",
+            "Better than baseline",
+            "Best MAE and R²"
+        ]
+    })
+
+    st.dataframe(model_compare_df, use_container_width=True)
+
     # --------------------------------------------------
     # ERROR DISTRIBUTION
     # --------------------------------------------------
@@ -629,9 +662,11 @@ if menu == "Dashboard":
     # --------------------------------------------------
     st.subheader("📉 Forecast Confidence Range")
 
+    confidence_factor = 1.96   # ~95% confidence interval
     std = np.std(errors)
-    upper = forecast_df["Load"] + std
-    lower = forecast_df["Load"] - std
+
+    upper = forecast_df["Load"] + (confidence_factor * std)
+    lower = forecast_df["Load"] - (confidence_factor * std)
 
     fig = plt.figure()
     plt.plot(forecast_df["Hour"], forecast_df["Load"], label="Prediction")
@@ -694,10 +729,10 @@ st.subheader("📥 Export Full Dashboard")
 
 if st.button("📊 Download Power BI Style Report"):
 
-    if len(export_figs) == 0:
+    if len(st.session_state.export_figs) == 0:
         st.warning("No charts to export")
     else:
-        pdf = generate_full_dashboard_pdf(export_figs)
+        pdf = generate_full_dashboard_pdf(st.session_state.export_figs)
 
         st.download_button(
             "⬇ Download Report",
